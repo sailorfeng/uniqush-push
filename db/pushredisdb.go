@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	redis "github.com/monnand/goredis"
-	. "github.com/uniqush/uniqush-push/push"
+	. "github.com/sailorfeng/uniqush-push/push"
 	"strconv"
 	"strings"
 )

@@ -22,7 +22,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	. "github.com/uniqush/uniqush-push/push"
+	. "github.com/sailorfeng/uniqush-push/push"
 	"io/ioutil"
 	"net/http"
 	"net/url"

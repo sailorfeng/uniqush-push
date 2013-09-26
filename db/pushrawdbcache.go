@@ -19,7 +19,7 @@ package db
 
 import (
 	"github.com/uniqush/cache"
-	. "github.com/uniqush/uniqush-push/push"
+	. "github.com/sailorfeng/uniqush-push/push"
 	"time"
 )
 
