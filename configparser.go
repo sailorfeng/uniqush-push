@@ -20,8 +20,8 @@ package main
 import (
 	"code.google.com/p/goconf/conf"
 	. "github.com/uniqush/log"
-	. "github.com/uniqush/uniqush-push/db"
-	. "github.com/uniqush/uniqush-push/push"
+	. "github.com/sailorfeng/uniqush-push/db"
+	. "github.com/sailorfeng/uniqush-push/push"
 	"io"
 	"os"
 	"strings"

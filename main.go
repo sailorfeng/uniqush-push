@@ -20,7 +20,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	. "github.com/uniqush/uniqush-push/srv"
+	. "github.com/sailorfeng/uniqush-push/srv"
 	"os"
 	"runtime"
 )

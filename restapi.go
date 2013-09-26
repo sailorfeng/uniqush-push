@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/nu7hatch/gouuid"
 	"github.com/uniqush/log"
-	. "github.com/uniqush/uniqush-push/push"
+	. "github.com/sailorfeng/uniqush-push/push"
 	"io"
 	"net/http"
 	"regexp"

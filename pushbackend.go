@@ -20,8 +20,8 @@ package main
 import (
 	"github.com/nu7hatch/gouuid"
 	. "github.com/uniqush/log"
-	. "github.com/uniqush/uniqush-push/db"
-	. "github.com/uniqush/uniqush-push/push"
+	. "github.com/sailorfeng/uniqush-push/db"
+	. "github.com/sailorfeng/uniqush-push/push"
 	"sync"
 	"time"
 )
