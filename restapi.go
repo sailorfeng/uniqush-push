@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"github.com/qiniu/iconv"	// add support for encoding convert by f.f. 2013-09-17
 )
 
 type RestAPI struct {
@@ -70,7 +71,7 @@ func init() {
 	if err != nil {
 		validServicePattern = nil
 	}
-	validSubscriberPattern, err = regexp.Compile("^[a-zA-z\\.0-9-_]+$")
+	validSubscriberPattern, err = regexp.Compile("^[a-zA-z\\.0-9-_@]+$")
 	if err != nil {
 		validSubscriberPattern = nil
 	}
@@ -190,6 +191,21 @@ func (self *RestAPI) changeSubscription(kv map[string]string, logger log.Logger,
 	}
 }
 
+// add support for encoding convert by f.f. 2013-09-17
+func (self *RestAPI) convertEncoding(kv map[string]string) {
+	if en, hasEn := kv["encoding"]; hasEn {
+		if msg, hasMsg := kv["msg"]; hasMsg {
+			cv, err := iconv.Open("utf-8", en)
+			if err != nil {
+				self.loggers[LOGGER_WEB].Errorf("Failed to open iconv module")
+				return
+			}
+			defer cv.Close()
+			kv["msg"] = cv.ConvString(msg)
+		}
+	}
+}
+
 func (self *RestAPI) pushNotification(reqId string, kv map[string]string, perdp map[string][]string, logger log.Logger, remoteAddr string) {
 	service, err := getServiceFromMap(kv, true)
 	if err != nil {
@@ -208,6 +224,8 @@ func (self *RestAPI) pushNotification(reqId string, kv map[string]string, perdp 
 
 	notif := NewEmptyNotification()
 
+	self.convertEncoding(kv) // add support for encoding convert by f.f. 2013-09-17
+
 	for k, v := range kv {
 		if len(v) <= 0 {
 			continue
@@ -217,6 +235,7 @@ func (self *RestAPI) pushNotification(reqId string, kv map[string]string, perdp 
 		case "subscribers":
 		case "service":
 			// three keys need to be ignored
+		case "encoding": 	// also ignore this for encoding convert by f.f.
 		case "badge":
 			if v != "" {
 				var e error
