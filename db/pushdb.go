@@ -62,7 +62,10 @@ type PushDatabase interface {
 	ModifyDeliveryPoint(dp *DeliveryPoint) error
 
 	GetPushServiceProviderDeliveryPointPairs(service string,
-		subscriber string) ([]PushServiceProviderDeliveryPointPair, error)
+		subscriber string, filter string) ([]PushServiceProviderDeliveryPointPair, error)
+
+	// set attrib for subscriber add by f.f. 2013.10.10
+	SetAttribToServiceSubscriber(srv, sub string, attribs map[string]string) error
 
 	FlushCache() error
 }
@@ -204,11 +207,17 @@ func (f *pushDatabaseOpts) RemoveDeliveryPointFromService(service string,
 	return err
 }
 
-func (f *pushDatabaseOpts) GetPushServiceProviderDeliveryPointPairs(service string,
-	subscriber string) ([]PushServiceProviderDeliveryPointPair, error) {
+func (f *pushDatabaseOpts) SetAttribToServiceSubscriber(srv, sub string , attribs map[string]string) error {
 	f.dblock.RLock()
 	defer f.dblock.RUnlock()
-	dpnames, err := f.db.GetDeliveryPointsNameByServiceSubscriber(service, subscriber)
+	return f.db.SetAttribToServiceSubscriber(srv, sub, attribs)
+}
+
+func (f *pushDatabaseOpts) GetPushServiceProviderDeliveryPointPairs(service string,
+	subscriber string, filter string) ([]PushServiceProviderDeliveryPointPair, error) {
+	f.dblock.RLock()
+	defer f.dblock.RUnlock()
+	dpnames, err := f.db.GetDeliveryPointsNameByServiceSubscriber(service, subscriber, filter)
 	if err != nil {
 		return nil, err
 	}

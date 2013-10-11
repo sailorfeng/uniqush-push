@@ -59,6 +59,9 @@ type pushRawDatabaseWriter interface {
 	AddPushServiceProviderToService(srv, psp string) error
 	RemovePushServiceProviderFromService(srv, psp string) error
 
+	// set attrib for subscriber add by f.f. 2013.10.10
+	SetAttribToServiceSubscriber(srv, sub string, attribs map[string]string) error
+
 	FlushCache() error
 }
 
@@ -67,7 +70,7 @@ type pushRawDatabaseReader interface {
 	GetDeliveryPoint(name string) (*DeliveryPoint, error)
 	GetPushServiceProvider(name string) (*PushServiceProvider, error)
 
-	GetDeliveryPointsNameByServiceSubscriber(srv, sub string) (map[string][]string, error)
+	GetDeliveryPointsNameByServiceSubscriber(srv, sub, filter string) (map[string][]string, error)
 	GetPushServiceProviderNameByServiceDeliveryPoint(srv, dp string) (string, error)
 
 	GetPushServiceProvidersByService(srv string) ([]string, error)

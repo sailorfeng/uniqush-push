@@ -20,10 +20,13 @@ package db
 import (
 	"errors"
 	"fmt"
+	"time"
 	redis "github.com/monnand/goredis"
 	. "github.com/sailorfeng/uniqush-push/push"
 	"strconv"
 	"strings"
+	"math"
+	"regexp"
 )
 
 type PushRedisDB struct {
@@ -142,7 +145,155 @@ func (r *PushRedisDB) RemovePushServiceProvider(psp string) error {
 	return err
 }
 
-func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr string) (map[string][]string, error) {
+const (
+	OP_EQUAL = 0x1
+	OP_LT = 0x02
+	OP_GT = 0x04
+)
+
+type filterStruct struct {
+	op int
+	val string
+	numVal int
+}
+
+func genFilter(filter string) (map[string]*filterStruct, error) {
+	if len(filter) == 0 {
+		return nil, nil
+	}
+	filterOpRe := regexp.MustCompile("[=<>]+")
+	splitFilter := strings.Split(filter, "&&")
+	filterMap := make(map[string]*filterStruct)
+	for _, filterStr := range splitFilter {
+		opStr := filterOpRe.FindString(filterStr)
+		spF := filterOpRe.Split(filterStr, 2)
+
+		bm := spF[0]
+		val := spF[1]
+		opVal := 0
+		for _, cV := range opStr {
+			switch(cV) {
+			case '=':
+				opVal |= OP_EQUAL
+			case '>':
+				opVal |= OP_GT
+			case '<':
+				opVal |= OP_LT
+			default:
+				return nil, fmt.Errorf("filter format error:%s", filter)
+			}
+		}
+
+		filterMap[bm] = new(filterStruct)
+		filterMap[bm].op = opVal
+		filterMap[bm].val = val
+		filterMap[bm].numVal = math.MinInt32
+		if intVal, canConv := strconv.Atoi(val); canConv == nil {
+			filterMap[bm].numVal = intVal
+		}
+	}
+	return filterMap, nil
+}
+
+func checkByFilter(sRet map[string]string, filter map[string]*filterStruct) (bool) {
+	for bm, fv := range filter {
+		rV, hasVal := sRet[bm]
+		if !hasVal {
+			if fv.op == OP_EQUAL || fv.val == "nil" {
+				continue
+			}
+			return false
+		} else {
+			if fv.numVal != math.MinInt32 {
+				if intVal, canConv := strconv.Atoi(rV); canConv != nil {
+					return false
+				} else {
+					switch(fv.op) {
+					case OP_EQUAL:
+						if intVal != fv.numVal {
+							return false
+						}
+					case OP_GT:
+						if intVal <= fv.numVal {
+							return false
+						}
+					case OP_GT | OP_EQUAL:
+						if intVal < fv.numVal {
+							return false
+						}
+					case OP_LT:
+						if intVal >= fv.numVal {
+							return false
+						}
+					case OP_LT | OP_EQUAL:
+						if intVal > fv.numVal {
+							return false
+						}
+					case OP_LT | OP_GT:
+						if intVal == fv.numVal {
+							return false
+						}
+					}
+				}
+			} else {
+				switch(fv.op) {
+				case OP_EQUAL:
+					if rV != fv.val {
+						return false
+					}
+				case OP_GT:
+					if rV <= fv.val {
+						return false
+					}
+				case OP_GT | OP_EQUAL:
+					if rV < fv.val {
+						return false
+					}
+				case OP_LT:
+					if rV >= fv.val {
+						return false
+					}
+				case OP_LT | OP_EQUAL:
+					if rV > fv.val {
+						return false
+					}
+				case OP_LT | OP_GT:
+					if rV == fv.val {
+						return false
+					}
+				}
+			}
+		}
+	}
+	return true
+}
+
+// set attrib for subscriber add by f.f. 2013.10.10
+func (r *PushRedisDB) SetAttribToServiceSubscriber(srv, sub string, attribs map[string]string) error {
+	var err error
+
+	modVal := make(map[string]string)
+	for attr, val := range attribs {
+		if len(val) == 0 {
+			_, err = r.client.Hdel(SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub, attr)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			modVal[attr] = val
+		}
+	}
+
+	err = r.client.Hmset(SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub, modVal)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter string) (map[string][]string, error) {
 	keys := make([]string, 1)
 	if !strings.Contains(usr, "*") && !strings.Contains(srv, "*") {
 		keys[0] = SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX + srv + ":" + usr
@@ -154,21 +305,48 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr string) 
 		}
 	}
 
+	nowUnixSec := time.Now().Unix()
 	ret := make(map[string][]string, len(keys))
+
+	filterMap, err := genFilter(filter)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, k := range keys {
-		m, err := r.client.Smembers(k)
+		sRet := make(map[string]string)
+		err := r.client.Hgetall(k, sRet)
 		if err != nil {
 			return nil, err
 		}
-		if m == nil {
+
+		if filterMap != nil && !checkByFilter(sRet, filterMap) {
 			continue
 		}
+
 		elem := strings.Split(k, ":")
 		s := elem[1]
 		if l, ok := ret[s]; !ok || l == nil {
 			ret[s] = make([]string, 0, len(keys))
 		}
-		for _, bm := range m {
+
+		for bm, v := range sRet {
+			if strings.Index(bm, "apns:") != 0 {
+				continue
+			}
+			lastActTime, canConv := strconv.ParseInt(v, 10, 64)
+			if canConv != nil {
+				lastActTime = 0
+			}
+			afkTime := nowUnixSec - lastActTime
+			if afkTime > 3600*24*30 {
+				// bye player
+				continue
+			} else if afkTime > 3600*24*7 {
+				// away for 1 week
+				continue
+			}
+
 			dpl := ret[s]
 			dpl = append(dpl, string(bm))
 			ret[s] = dpl
@@ -189,7 +367,8 @@ func (r *PushRedisDB) GetPushServiceProviderNameByServiceDeliveryPoint(srv, dp s
 }
 
 func (r *PushRedisDB) AddDeliveryPointToServiceSubscriber(srv, sub, dp string) error {
-	i, err := r.client.Sadd(SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub, []byte(dp))
+	timeStr := fmt.Sprintf("%d", time.Now().Unix())
+	i, err := r.client.Hset(SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub, dp, []byte(timeStr))
 	if err != nil {
 		return err
 	}
@@ -204,7 +383,7 @@ func (r *PushRedisDB) AddDeliveryPointToServiceSubscriber(srv, sub, dp string) e
 }
 
 func (r *PushRedisDB) RemoveDeliveryPointFromServiceSubscriber(srv, sub, dp string) error {
-	j, err := r.client.Srem(SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub, []byte(dp))
+	j, err := r.client.Hdel(SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub, dp)
 	if err != nil {
 		return err
 	}

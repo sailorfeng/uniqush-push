@@ -119,7 +119,7 @@ func (self *PushBackEnd) fixError(reqId string, event error, logger Logger, afte
 			subs := make([]string, 1)
 			subs[0] = sub
 			after = 2 * after
-			self.pushImpl(reqId, service, subs, err.Content, nil, self.loggers[LOGGER_PUSH], err.Provider, err.Destination, after)
+			self.pushImpl(reqId, service, subs, err.Content, nil, self.loggers[LOGGER_PUSH], err.Provider, err.Destination, after, "")
 		}()
 	case *PushServiceProviderUpdate:
 		if err.Provider == nil {
@@ -202,7 +202,7 @@ func (self *PushBackEnd) collectResult(reqId string, service string, resChan <-c
 }
 
 func (self *PushBackEnd) NumberOfDeliveryPoints(service, sub string, logger Logger) int {
-	pspDpList, err := self.db.GetPushServiceProviderDeliveryPointPairs(service, sub)
+	pspDpList, err := self.db.GetPushServiceProviderDeliveryPointPairs(service, sub, "")
 	if err != nil {
 		logger.Errorf("Query=NumberOfDeliveryPoints Service=%v Subscriber=%v Failed: Database Error %v", service, sub, err)
 		return 0
@@ -210,11 +210,18 @@ func (self *PushBackEnd) NumberOfDeliveryPoints(service, sub string, logger Logg
 	return len(pspDpList)
 }
 
-func (self *PushBackEnd) Push(reqId string, service string, subs []string, notif *Notification, perdp map[string][]string, logger Logger) {
-	self.pushImpl(reqId, service, subs, notif, perdp, logger, nil, nil, 0*time.Second)
+func (self *PushBackEnd) SetAttrib(service string, subscriber string, attribs map[string]string, logger Logger) {
+	err := self.db.SetAttribToServiceSubscriber(service, subscriber, attribs)
+	if err != nil {
+		logger.Errorf("Service=%v Subscriber=%v SetAttrib Failed: %v", service, subscriber, attribs)
+	}
 }
 
-func (self *PushBackEnd) pushImpl(reqId string, service string, subs []string, notif *Notification, perdp map[string][]string, logger Logger, provider *PushServiceProvider, dest *DeliveryPoint, after time.Duration) {
+func (self *PushBackEnd) Push(reqId string, service string, subs []string, notif *Notification, perdp map[string][]string, logger Logger, filter string) {
+	self.pushImpl(reqId, service, subs, notif, perdp, logger, nil, nil, 0*time.Second, filter)
+}
+
+func (self *PushBackEnd) pushImpl(reqId string, service string, subs []string, notif *Notification, perdp map[string][]string, logger Logger, provider *PushServiceProvider, dest *DeliveryPoint, after time.Duration, filter string) {
 	dpChanMap := make(map[string]chan *DeliveryPoint)
 	wg := new(sync.WaitGroup)
 	for _, sub := range subs {
@@ -226,7 +233,7 @@ func (self *PushBackEnd) pushImpl(reqId string, service string, subs []string, n
 			pspDpList[0].DeliveryPoint = dest
 		} else {
 			var err error
-			pspDpList, err = self.db.GetPushServiceProviderDeliveryPointPairs(service, sub)
+			pspDpList, err = self.db.GetPushServiceProviderDeliveryPointPairs(service, sub, filter)
 			if err != nil {
 				logger.Errorf("RequestID=%v Service=%v Subscriber=%v Failed: Database Error %v", reqId, service, sub, err)
 				continue

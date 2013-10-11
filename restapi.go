@@ -57,6 +57,7 @@ const (
 	ADD_DELIVERY_POINT_TO_SERVICE_URL           = "/subscribe"
 	REMOVE_DELIVERY_POINT_FROM_SERVICE_URL      = "/unsubscribe"
 	PUSH_NOTIFICATION_URL                       = "/push"
+	SET_ATTRIB                                  = "/setattrib"
 	STOP_PROGRAM_URL                            = "/stop"
 	VERSION_INFO_URL                            = "/version"
 	QUERY_NUMBER_OF_DELIVERY_POINTS_URL         = "/nrdp"
@@ -206,6 +207,47 @@ func (self *RestAPI) convertEncoding(kv map[string]string) {
 	}
 }
 
+func getAttribsFromMap(kv map[string]string) (attribs map[string]string, err error) {
+	var v string
+	var ok bool
+	if v, ok = kv["attribs"]; !ok {
+		err = fmt.Errorf("NoSubscriber")
+		return
+	}
+	vArr := strings.Split(v, ",")
+	attribs = make(map[string]string)
+	for _, vStr := range vArr {
+		spStr := strings.Split(vStr, ":")
+		attribs[spStr[0]] = spStr[1]
+	}
+	return
+}
+
+func (self *RestAPI) setAttrib(reqId string, kv map[string]string, logger log.Logger, remoteAddr string) {
+	service, err := getServiceFromMap(kv, true)
+	if err != nil {
+		logger.Errorf("RequestId=%v From=%v Cannot get service name: %v; %v", reqId, remoteAddr, service, err)
+		return
+	}
+	subs, err := getSubscribersFromMap(kv, false)
+	if err != nil {
+		logger.Errorf("RequestId=%v From=%v Service=%v Cannot get subscriber: %v", reqId, remoteAddr, service, err)
+		return
+	}
+	if len(subs) != 1 {
+		logger.Errorf("RequestId=%v From=%v Service=%v Subscriber_error=%v", reqId, remoteAddr, service, subs)
+		return
+	}
+	attribs, err := getAttribsFromMap(kv)
+	if err != nil {
+		logger.Errorf("RequestId=%v From=%v Service=%v Attribs_error: %v", reqId, remoteAddr, service, err)
+		return
+	}
+
+	self.backend.SetAttrib(service, subs[0], attribs, logger)
+	logger.Infof("RequestId=%v From=%v Service=%v Subscribers=\"%v\" Attrib=\"%v\"", reqId, remoteAddr, service, subs, attribs)
+}
+
 func (self *RestAPI) pushNotification(reqId string, kv map[string]string, perdp map[string][]string, logger log.Logger, remoteAddr string) {
 	service, err := getServiceFromMap(kv, true)
 	if err != nil {
@@ -226,6 +268,7 @@ func (self *RestAPI) pushNotification(reqId string, kv map[string]string, perdp 
 
 	self.convertEncoding(kv) // add support for encoding convert by f.f. 2013-09-17
 
+	filter := ""
 	for k, v := range kv {
 		if len(v) <= 0 {
 			continue
@@ -235,7 +278,7 @@ func (self *RestAPI) pushNotification(reqId string, kv map[string]string, perdp 
 		case "subscribers":
 		case "service":
 			// three keys need to be ignored
-		case "encoding": 	// also ignore this for encoding convert by f.f.
+		case "encoding":	// also ignore this for encoding convert by f.f.
 		case "badge":
 			if v != "" {
 				var e error
@@ -246,6 +289,8 @@ func (self *RestAPI) pushNotification(reqId string, kv map[string]string, perdp 
 					notif.Data["badge"] = "0"
 				}
 			}
+		case "filter":
+			filter = v
 		default:
 			notif.Data[k] = v
 		}
@@ -258,7 +303,7 @@ func (self *RestAPI) pushNotification(reqId string, kv map[string]string, perdp 
 
 	logger.Infof("RequestId=%v From=%v Service=%v Subscribers=\"%v\"", reqId, remoteAddr, service, subs)
 
-	self.backend.Push(reqId, service, subs, notif, perdp, logger)
+	self.backend.Push(reqId, service, subs, notif, perdp, logger, filter)
 	return
 }
 
@@ -355,6 +400,11 @@ func (self *RestAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		logger := log.MultiLogger(weblogger, self.loggers[LOGGER_PUSH])
 		rid, _ := uuid.NewV4()
 		self.pushNotification(rid.String(), kv, perdp, logger, remoteAddr)
+	case SET_ATTRIB:
+		weblogger := log.NewLogger(writer, "[SetAttrib]", logLevel)
+		logger := log.MultiLogger(weblogger, self.loggers[LOGGER_SET_ATTRIB])
+		rid, _ := uuid.NewV4()
+		self.setAttrib(rid.String(), kv, logger, remoteAddr)
 	}
 }
 
@@ -368,6 +418,7 @@ func (self *RestAPI) Run(addr string, stopChan chan<- bool) {
 	http.Handle(REMOVE_DELIVERY_POINT_FROM_SERVICE_URL, self)
 	http.Handle(REMOVE_PUSH_SERVICE_PROVIDER_TO_SERVICE_URL, self)
 	http.Handle(PUSH_NOTIFICATION_URL, self)
+	http.Handle(SET_ATTRIB, self)
 	http.Handle(QUERY_NUMBER_OF_DELIVERY_POINTS_URL, self)
 	self.stopChan = stopChan
 	err := http.ListenAndServe(addr, nil)
