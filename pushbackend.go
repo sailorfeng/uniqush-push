@@ -213,7 +213,7 @@ func (self *PushBackEnd) NumberOfDeliveryPoints(service, sub string, logger Logg
 func (self *PushBackEnd) SetAttrib(service string, subscriber string, attribs map[string]string, logger Logger) {
 	err := self.db.SetAttribToServiceSubscriber(service, subscriber, attribs)
 	if err != nil {
-		logger.Errorf("Service=%v Subscriber=%v SetAttrib Failed: %v", service, subscriber, attribs)
+		logger.Errorf("Service=%v Subscriber=%v SetAttrib Failed: %v err:%v", service, subscriber, attribs, err)
 	}
 }
 

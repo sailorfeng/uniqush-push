@@ -29,6 +29,7 @@ import (
 	"strings"
 	"sync"
 	"github.com/qiniu/iconv"	// add support for encoding convert by f.f. 2013-09-17
+	"encoding/json"
 )
 
 type RestAPI struct {
@@ -211,15 +212,39 @@ func getAttribsFromMap(kv map[string]string) (attribs map[string]string, err err
 	var v string
 	var ok bool
 	if v, ok = kv["attribs"]; !ok {
-		err = fmt.Errorf("NoSubscriber")
+		err = fmt.Errorf("NoAttribs")
 		return
 	}
-	vArr := strings.Split(v, ",")
-	attribs = make(map[string]string)
-	for _, vStr := range vArr {
-		spStr := strings.Split(vStr, ":")
-		attribs[spStr[0]] = spStr[1]
+	var inter interface{}
+	err = json.Unmarshal([]byte(v), &inter)
+	if err != nil {
+		return
 	}
+
+	atts, ok := inter.(map[string]interface{})
+	if !ok {
+		err = fmt.Errorf("Attribs error:%v", v)
+		return
+	}
+
+	attribs = make(map[string]string)
+	for k, vl := range atts {
+		switch vlt := vl.(type) {
+		case float64:
+			attribs[k] = fmt.Sprintf("%.f", vlt)
+		case string:
+			attribs[k] = vlt
+		default:
+			err = fmt.Errorf("Attribs type error:%v", v)
+			return
+		}
+	}
+	//vArr := strings.Split(v, ",")
+	//attribs = make(map[string]string)
+	//for _, vStr := range vArr {
+	//    spStr := strings.Split(vStr, ":")
+	//    attribs[spStr[0]] = spStr[1]
+	//}
 	return
 }
 

@@ -271,11 +271,19 @@ func checkByFilter(sRet map[string]string, filter map[string]*filterStruct) (boo
 // set attrib for subscriber add by f.f. 2013.10.10
 func (r *PushRedisDB) SetAttribToServiceSubscriber(srv, sub string, attribs map[string]string) error {
 	var err error
+	subStr := SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub
+	if hasKey, err := r.client.Hlen(subStr); err != nil || hasKey == 0 {
+		if err != nil {
+			return err
+		} else {
+			return fmt.Errorf("NoSuchSubscriber:%v", sub)
+		}
+	}
 
 	modVal := make(map[string]string)
 	for attr, val := range attribs {
 		if len(val) == 0 {
-			_, err = r.client.Hdel(SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub, attr)
+			_, err = r.client.Hdel(subStr, attr)
 			if err != nil {
 				return err
 			}
@@ -285,7 +293,7 @@ func (r *PushRedisDB) SetAttribToServiceSubscriber(srv, sub string, attribs map[
 		}
 	}
 
-	err = r.client.Hmset(SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub, modVal)
+	err = r.client.Hmset(subStr, modVal)
 	if err != nil {
 		return err
 	}
@@ -368,13 +376,16 @@ func (r *PushRedisDB) GetPushServiceProviderNameByServiceDeliveryPoint(srv, dp s
 
 func (r *PushRedisDB) AddDeliveryPointToServiceSubscriber(srv, sub, dp string) error {
 	timeStr := fmt.Sprintf("%d", time.Now().Unix())
-	i, err := r.client.Hset(SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub, dp, []byte(timeStr))
+	subStr := SERVICE_SUBSCRIBER_TO_DELIVERY_POINTS_PREFIX+srv+":"+sub
+
+	i, err := r.client.Hset(subStr, dp, []byte(timeStr))
 	if err != nil {
 		return err
 	}
 	if i == false {
 		return nil
 	}
+
 	_, err = r.client.Incr(DELIVERY_POINT_COUNTER_PREFIX + dp)
 	if err != nil {
 		return err
