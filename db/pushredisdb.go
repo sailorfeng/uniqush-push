@@ -199,7 +199,7 @@ func checkByFilter(sRet map[string]string, filter map[string]*filterStruct) (boo
 	for bm, fv := range filter {
 		rV, hasVal := sRet[bm]
 		if !hasVal {
-			if fv.op == OP_EQUAL || fv.val == "nil" {
+			if fv.op == OP_EQUAL || fv.val == "" {
 				continue
 			}
 			return false
@@ -321,6 +321,13 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter 
 		return nil, err
 	}
 
+	justPushLast := false
+	if filterMap != nil {
+		_, justPushLast = filterMap["_LastestDevice"]
+	}
+
+	justPushLast = true // default push the lastest device
+
 	for _, k := range keys {
 		sRet := make(map[string]string)
 		err := r.client.Hgetall(k, sRet)
@@ -338,6 +345,11 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter 
 			ret[s] = make([]string, 0, len(keys))
 		}
 
+		var lastestTime int64
+		lastestTime = 0
+		var lastestDp string
+
+		subDp := make([]string, 0)
 		for bm, v := range sRet {
 			if strings.Index(bm, "apns:") != 0 {
 				continue
@@ -355,10 +367,23 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter 
 				continue
 			}
 
-			dpl := ret[s]
-			dpl = append(dpl, string(bm))
-			ret[s] = dpl
+			if lastActTime > lastestTime {
+				lastestTime = lastActTime
+				lastestDp = string(bm)
+				//fmt.Printf("user:%v lastActTime:%v lastestTime:%v, lastestDp:%v\n", k, lastActTime, lastestTime, lastestDp)
+			}
+
+			subDp = append(subDp, string(bm))
 		}
+
+		//fmt.Printf("user:%v justPushLast:%v len:%v lastestTime:%v, lastestDp:%v\n", k, justPushLast, len(ret[s]), lastestTime, lastestDp)
+		if justPushLast && lastestTime > 0 {
+			ret[s] = append(ret[s], lastestDp)
+			//fmt.Printf("push to just last device:%v astestDp:%v\n", s, lastestDp)
+		} else {
+			ret[s] = append(ret[s], subDp...)
+		}
+		//fmt.Printf("push to device:%v dps:%#v\n", s, ret[s])
 	}
 	return ret, nil
 }
