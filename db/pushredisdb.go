@@ -351,7 +351,7 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter 
 
 		subDp := make([]string, 0)
 		for bm, v := range sRet {
-			if strings.Index(bm, "apns:") != 0 {
+			if strings.Index(bm, ":") < 0 {
 				continue
 			}
 			lastActTime, canConv := strconv.ParseInt(v, 10, 64)
