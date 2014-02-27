@@ -213,6 +213,14 @@ func Run(conf, version string) error {
 	}
 	psm := GetPushServiceManager()
 
+	// read server config for xyqma, ugly!!!
+	xyqmAddr, err := c.GetString("Xyqma", "serv")
+	if err != nil || addr == "" {
+		xyqmAddr = "localhost:8998"
+		err = nil
+	}
+	setXyqmaServ(xyqmAddr)
+
 	db, err := NewPushDatabaseWithoutCache(dbconf)
 	if err != nil {
 		return err

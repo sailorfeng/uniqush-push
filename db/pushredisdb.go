@@ -361,10 +361,10 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter 
 			afkTime := nowUnixSec - lastActTime
 			if afkTime > 3600*24*30 {
 				// bye player
-				continue
+				// continue
 			} else if afkTime > 3600*24*7 {
 				// away for 1 week
-				continue
+				// continue
 			}
 
 			if lastActTime > lastestTime {
@@ -383,7 +383,7 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter 
 		} else {
 			ret[s] = append(ret[s], subDp...)
 		}
-		//fmt.Printf("push to device:%v dps:%#v\n", s, ret[s])
+		fmt.Printf("push to device:%v dps:%#v\n", s, ret[s])
 	}
 	return ret, nil
 }

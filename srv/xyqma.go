@@ -21,8 +21,15 @@ import (
 )
 
 const (
-	xyqmaServiceURL string = "http://192.168.25.107:8080/push"
+	xyqmaServiceURL string = "http://192.168.25.107:8998/push"
+	//xyqmaServiceURL string = "http://123.58.170.12:8998/push"
 )
+
+var xyqmaServer string = ""
+
+func SetXyqmaServer(ipAddr string) {
+	xyqmaServer = ipAddr
+}
 
 type xyqmaPushService struct {
 }
@@ -207,7 +214,7 @@ func (p *xyqmaPushService) singlePush(psp *PushServiceProvider, dp *DeliveryPoin
 		}
 	}
 
-	req, err := http.NewRequest("GET", xyqmaServiceURL + "?" + data.Encode(), strings.NewReader(""))
+	req, err := http.NewRequest("GET", "http://" + xyqmaServer + "/push?" + data.Encode(), strings.NewReader(""))
 	if err != nil {
 		return "", err
 	}
