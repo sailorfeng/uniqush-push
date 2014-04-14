@@ -38,10 +38,6 @@ func installPushSrvices() {
 	InstallXyqma()
 }
 
-func setXyqmaServ(ipAddr string) {
-	SetXyqmaServer(ipAddr)
-}
-
 func main() {
 	flag.Parse()
 	if *uniqushPushShowVersionFlag {
