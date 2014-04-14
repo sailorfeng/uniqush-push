@@ -19,6 +19,7 @@ package srv
 
 import (
 	"bytes"
+	"code.google.com/p/goconf/conf"
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
@@ -95,6 +96,8 @@ func newAPNSPushService() *apnsPushService {
 func (p *apnsPushService) Name() string {
 	return "apns"
 }
+
+func (p *apnsPushService) Config(cf *conf.ConfigFile) { }
 
 func (p *apnsPushService) Finalize() {
 	close(p.reqChan)

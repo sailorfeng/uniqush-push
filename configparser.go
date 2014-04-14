@@ -114,6 +114,10 @@ func LoadDatabaseConfig(cf *conf.ConfigFile) (*DatabaseConfig, error) {
 	if err != nil || c.CacheSize < 0 {
 		c.CacheSize = 1024
 	}
+	c.AfkUserTime, err = cf.GetInt("Push", "afktime")
+	if err != nil || c.AfkUserTime < 0 {
+		c.AfkUserTime = 0
+	}
 
 	return c, nil
 }
@@ -212,6 +216,10 @@ func Run(conf, version string) error {
 		return err
 	}
 	psm := GetPushServiceManager()
+
+	for _, v := range psm.GetAllPushServices() {
+		psm.Config(v, c)
+	}
 
 	db, err := NewPushDatabaseWithoutCache(dbconf)
 	if err != nil {

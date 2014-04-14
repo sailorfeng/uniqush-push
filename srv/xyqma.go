@@ -9,6 +9,7 @@
 package srv
 
 import (
+	"code.google.com/p/goconf/conf"
 	"errors"
 	"fmt"
 	. "github.com/sailorfeng/uniqush-push/push"
@@ -20,15 +21,13 @@ import (
 	"time"
 )
 
-const (
-	xyqmaServiceURL string = "http://192.168.25.107:8080/push"
-)
-
 type xyqmaPushService struct {
+	hostAddr string
 }
 
 func newxyqmaPushService() *xyqmaPushService {
 	ret := new(xyqmaPushService)
+	ret.hostAddr = "127.0.0.1:8999"
 	return ret
 }
 
@@ -38,6 +37,13 @@ func InstallXyqma() {
 }
 
 func (p *xyqmaPushService) Finalize() {}
+
+func (p *xyqmaPushService) Config(cf *conf.ConfigFile) {
+	v, err := cf.GetString(p.Name(), "serv")
+	if err == nil {
+		p.hostAddr = v
+	}
+}
 
 func (p *xyqmaPushService) BuildPushServiceProviderFromMap(kv map[string]string,
 	psp *PushServiceProvider) error {
@@ -75,115 +81,7 @@ func (p *xyqmaPushService) BuildDeliveryPointFromMap(kv map[string]string,
 func (p *xyqmaPushService) Name() string {
 	return "xyqma"
 }
-/*
-func (p *xyqmaPushService) singlePushBak(psp *PushServiceProvider, dp *DeliveryPoint, n *Notification) (string, error) {
-	if psp.PushServiceName() != dp.PushServiceName() || psp.PushServiceName() != p.Name() {
-		return "", NewIncompatibleError()
-	}
 
-	msg := n.Data
-	data := url.Values{}
-	regid := dp.FixedData["regid"]
-	if len(regid) == 0 {
-		reterr := NewBadDeliveryPointWithDetails(dp, "EmptyRegistrationID")
-		return "", reterr
-	}
-	data.Set("registration_id", regid)
-	if mid, ok := msg["id"]; ok {
-		data.Set("collapse_key", mid)
-	} else {
-		now := time.Now().UTC()
-		ckey := fmt.Sprintf("%v-%v-%v-%v-%v",
-			dp.Name(),
-			psp.Name(),
-			now.Format("Mon Jan 2 15:04:05 -0700 MST 2006"),
-			now.Nanosecond(),
-			msg["msg"])
-		hash := sha1.New()
-		hash.Write([]byte(ckey))
-		h := make([]byte, 0, 64)
-		ckey = fmt.Sprintf("%x", hash.Sum(h))
-		data.Set("collapse_key", ckey)
-	}
-
-	for k, v := range msg {
-		switch k {
-		case "id":
-			continue
-		default:
-			data.Set("data."+k, v)
-		}
-	}
-
-	req, err := http.NewRequest("POST", xyqmaServiceURL, strings.NewReader(data.Encode()))
-	if err != nil {
-		return "", err
-	}
-
-	authtoken := psp.VolatileData["authtoken"]
-
-	req.Header.Set("Authorization", "GoogleLogin auth="+authtoken)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	conf := &tls.Config{InsecureSkipVerify: true}
-	tr := &http.Transport{TLSClientConfig: conf}
-	client := &http.Client{Transport: tr}
-
-	r, e20 := client.Do(req)
-	if e20 != nil {
-		return "", e20
-	}
-	defer r.Body.Close()
-	new_auth_token := r.Header.Get("Update-Client-Auth")
-	if new_auth_token != "" && authtoken != new_auth_token {
-		psp.VolatileData["authtoken"] = new_auth_token
-		return "", NewPushServiceProviderUpdate(psp)
-	}
-
-	switch r.StatusCode {
-	case 503:
-		fallthrough
-	case 500:
-		after := 0 * time.Second
-		var reterr error
-		reterr = NewRetryError(psp, dp, n, after)
-		return "", reterr
-	case 401:
-		return "", NewBadPushServiceProvider(psp)
-	case 400:
-		return "", NewBadNotification()
-	}
-
-	contents, e30 := ioutil.ReadAll(r.Body)
-	if e30 != nil {
-		return "", e30
-	}
-
-	msgid := string(contents)
-	msgid = strings.Replace(msgid, "\r", "", -1)
-	msgid = strings.Replace(msgid, "\n", "", -1)
-	if msgid[:3] == "id=" {
-		retid := fmt.Sprintf("xyqma:%s-%s", psp.Name(), msgid[3:])
-		return retid, nil
-	}
-	var reterr error
-	switch msgid[6:] {
-	case "QuotaExceeded":
-		reterr = NewBadPushServiceProviderWithDetails(psp, msgid[6:])
-	case "InvalidRegistration":
-		reterr = NewBadDeliveryPointWithDetails(dp, msgid[6:])
-	case "NotRegistered":
-		reterr = NewBadDeliveryPointWithDetails(dp, msgid[6:])
-	case "MessageTooBig":
-		reterr = NewBadNotificationWithDetails(msgid[6:])
-	case "DeviceQuotaExceeded":
-		reterr = NewBadDeliveryPointWithDetails(dp, msgid[6:])
-	default:
-		reterr = errors.New("Unknown Error from xyqma: " + msgid[6:])
-	}
-	return "", reterr
-}
-*/
 func (p *xyqmaPushService) singlePush(psp *PushServiceProvider, dp *DeliveryPoint, n *Notification) (string, error) {
 	if psp.PushServiceName() != dp.PushServiceName() || psp.PushServiceName() != p.Name() {
 		return "", NewIncompatibleError()
@@ -207,7 +105,7 @@ func (p *xyqmaPushService) singlePush(psp *PushServiceProvider, dp *DeliveryPoin
 		}
 	}
 
-	req, err := http.NewRequest("GET", xyqmaServiceURL + "?" + data.Encode(), strings.NewReader(""))
+	req, err := http.NewRequest("GET", "http://"+ p.hostAddr + "/push?" + data.Encode(), strings.NewReader(""))
 	if err != nil {
 		return "", err
 	}

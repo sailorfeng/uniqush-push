@@ -18,6 +18,7 @@
 package srv
 
 import (
+	"code.google.com/p/goconf/conf"
 	"crypto/sha1"
 	"crypto/tls"
 	"errors"
@@ -49,6 +50,7 @@ func InstallC2DM() {
 }
 
 func (p *c2dmPushService) Finalize() {}
+func (p *c2dmPushService) Config(cf *conf.ConfigFile) {}
 
 func (p *c2dmPushService) BuildPushServiceProviderFromMap(kv map[string]string,
 	psp *PushServiceProvider) error {

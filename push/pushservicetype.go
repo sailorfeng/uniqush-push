@@ -17,7 +17,10 @@
 
 package push
 
-import "fmt"
+import (
+	"fmt"
+	"code.google.com/p/goconf/conf"
+)
 
 type PushResult struct {
 	Provider    *PushServiceProvider
@@ -75,4 +78,7 @@ type PushServiceType interface {
 	SetErrorReportChan(errChan chan<- error)
 
 	Finalize()
+
+	// add configuration to push service
+	Config(cf *conf.ConfigFile)
 }
