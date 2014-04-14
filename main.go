@@ -35,7 +35,7 @@ func installPushSrvices() {
 	//InstallC2DM()
 	InstallAPNS()
 	//InstallADM()
-	InstallXyqma()
+	InstallNiepush()
 }
 
 func main() {

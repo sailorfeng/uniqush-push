@@ -1,5 +1,5 @@
 /**
-* @file xyqma.go
+* @file niepush.go
 * @brief Just to support my android push service.
 * @author f.f.
 * @version 1.0
@@ -21,31 +21,31 @@ import (
 	"time"
 )
 
-type xyqmaPushService struct {
+type niepushPushService struct {
 	hostAddr string
 }
 
-func newxyqmaPushService() *xyqmaPushService {
-	ret := new(xyqmaPushService)
+func newniepushPushService() *niepushPushService {
+	ret := new(niepushPushService)
 	ret.hostAddr = "127.0.0.1:8999"
 	return ret
 }
 
-func InstallXyqma() {
+func InstallNiepush() {
 	psm := GetPushServiceManager()
-	psm.RegisterPushServiceType(newxyqmaPushService())
+	psm.RegisterPushServiceType(newniepushPushService())
 }
 
-func (p *xyqmaPushService) Finalize() {}
+func (p *niepushPushService) Finalize() {}
 
-func (p *xyqmaPushService) Config(cf *conf.ConfigFile) {
+func (p *niepushPushService) Config(cf *conf.ConfigFile) {
 	v, err := cf.GetString(p.Name(), "serv")
 	if err == nil {
 		p.hostAddr = v
 	}
 }
 
-func (p *xyqmaPushService) BuildPushServiceProviderFromMap(kv map[string]string,
+func (p *niepushPushService) BuildPushServiceProviderFromMap(kv map[string]string,
 	psp *PushServiceProvider) error {
 	if service, ok := kv["service"]; ok && len(service) > 0 {
 		psp.FixedData["service"] = service
@@ -56,7 +56,7 @@ func (p *xyqmaPushService) BuildPushServiceProviderFromMap(kv map[string]string,
 	return nil
 }
 
-func (p *xyqmaPushService) BuildDeliveryPointFromMap(kv map[string]string,
+func (p *niepushPushService) BuildDeliveryPointFromMap(kv map[string]string,
 	dp *DeliveryPoint) error {
 	if service, ok := kv["service"]; ok && len(service) > 0 {
 		dp.FixedData["service"] = service
@@ -78,11 +78,11 @@ func (p *xyqmaPushService) BuildDeliveryPointFromMap(kv map[string]string,
 	return nil
 }
 
-func (p *xyqmaPushService) Name() string {
-	return "xyqma"
+func (p *niepushPushService) Name() string {
+	return "niepush"
 }
 
-func (p *xyqmaPushService) singlePush(psp *PushServiceProvider, dp *DeliveryPoint, n *Notification) (string, error) {
+func (p *niepushPushService) singlePush(psp *PushServiceProvider, dp *DeliveryPoint, n *Notification) (string, error) {
 	if psp.PushServiceName() != dp.PushServiceName() || psp.PushServiceName() != p.Name() {
 		return "", NewIncompatibleError()
 	}
@@ -137,11 +137,11 @@ func (p *xyqmaPushService) singlePush(psp *PushServiceProvider, dp *DeliveryPoin
 		return "", e30
 	}
 
-	retid := fmt.Sprintf("xyqma:%s-%s", psp.Name(), string(contents))
+	retid := fmt.Sprintf("niepush:%s-%s", psp.Name(), string(contents))
 	return retid, nil
 }
 
-func (self *xyqmaPushService) Push(psp *PushServiceProvider, dpQueue <-chan *DeliveryPoint, resQueue chan<- *PushResult, notif *Notification) {
+func (self *niepushPushService) Push(psp *PushServiceProvider, dpQueue <-chan *DeliveryPoint, resQueue chan<- *PushResult, notif *Notification) {
 	wg := new(sync.WaitGroup)
 	for dp := range dpQueue {
 		wg.Add(1)
@@ -165,6 +165,6 @@ func (self *xyqmaPushService) Push(psp *PushServiceProvider, dpQueue <-chan *Del
 	close(resQueue)
 }
 
-func (self *xyqmaPushService) SetErrorReportChan(errChan chan<- error) {
+func (self *niepushPushService) SetErrorReportChan(errChan chan<- error) {
 	return
 }
