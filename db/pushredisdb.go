@@ -32,6 +32,7 @@ import (
 type PushRedisDB struct {
 	client *redis.Client
 	psm    *PushServiceManager
+	afkUserTime int
 }
 
 const (
@@ -72,6 +73,7 @@ func newPushRedisDB(c *DatabaseConfig) (*PushRedisDB, error) {
 	ret := new(PushRedisDB)
 	ret.client = &client
 	ret.psm = c.PushServiceManager
+	ret.afkUserTime = c.AfkUserTime
 	if ret.psm == nil {
 		ret.psm = GetPushServiceManager()
 	}
@@ -199,7 +201,7 @@ func checkByFilter(sRet map[string]string, filter map[string]*filterStruct) (boo
 	for bm, fv := range filter {
 		rV, hasVal := sRet[bm]
 		if !hasVal {
-			if fv.op == OP_EQUAL || fv.val == "" {
+			if fv.op == OP_EQUAL && fv.val == "" {
 				continue
 			}
 			return false
@@ -323,10 +325,8 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter 
 
 	justPushLast := false
 	if filterMap != nil {
-		_, justPushLast = filterMap["_LastestDevice"]
+		_, justPushLast = filterMap["LastestDevice"]
 	}
-
-	justPushLast = true // default push the lastest device
 
 	for _, k := range keys {
 		sRet := make(map[string]string)
@@ -359,12 +359,12 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter 
 				lastActTime = 0
 			}
 			afkTime := nowUnixSec - lastActTime
-			if afkTime > 3600*24*30 {
-				// bye player
-				// continue
-			} else if afkTime > 3600*24*7 {
-				// away for 1 week
-				// continue
+			if afkTime > 3600*24*365 {
+				// TODO: del this user
+				continue
+			} else if r.afkUserTime > 0 && afkTime > (int64)(r.afkUserTime) {
+				// away to long ago
+				continue
 			}
 
 			if lastActTime > lastestTime {

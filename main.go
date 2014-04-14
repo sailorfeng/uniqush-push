@@ -32,9 +32,9 @@ var uniqushPushVersion = "uniqush-push 1.5.0"
 
 func installPushSrvices() {
 	InstallGCM()
-	InstallC2DM()
+	//InstallC2DM()
 	InstallAPNS()
-	InstallADM()
+	//InstallADM()
 	InstallXyqma()
 }
 

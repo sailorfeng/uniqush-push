@@ -114,6 +114,10 @@ func LoadDatabaseConfig(cf *conf.ConfigFile) (*DatabaseConfig, error) {
 	if err != nil || c.CacheSize < 0 {
 		c.CacheSize = 1024
 	}
+	c.AfkUserTime, err = cf.GetInt("Push", "afktime")
+	if err != nil || c.AfkUserTime < 0 {
+		c.AfkUserTime = 0
+	}
 
 	return c, nil
 }
@@ -213,13 +217,9 @@ func Run(conf, version string) error {
 	}
 	psm := GetPushServiceManager()
 
-	// read server config for xyqma, ugly!!!
-	xyqmAddr, err := c.GetString("Xyqma", "serv")
-	if err != nil || addr == "" {
-		xyqmAddr = "localhost:8998"
-		err = nil
+	for _, v := range psm.GetAllPushServices() {
+		psm.Config(v, c)
 	}
-	setXyqmaServ(xyqmAddr)
 
 	db, err := NewPushDatabaseWithoutCache(dbconf)
 	if err != nil {

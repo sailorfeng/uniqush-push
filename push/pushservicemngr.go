@@ -18,6 +18,7 @@
 package push
 
 import (
+	"code.google.com/p/goconf/conf"
 	"errors"
 	"fmt"
 	"strings"
@@ -68,6 +69,20 @@ func (m *PushServiceManager) RegisterPushServiceType(pt PushServiceType) error {
 	pair.pst = pt
 	m.serviceTypes[name] = pair
 	return nil
+}
+
+func (m *PushServiceManager) Config(name string, cf *conf.ConfigFile) {
+	if v, ok := m.serviceTypes[name]; ok {
+		v.pst.Config(cf)
+	}
+}
+
+func (m *PushServiceManager) GetAllPushServices() []string {
+	kys := make([]string, len(m.serviceTypes))
+	for k := range m.serviceTypes {
+		kys = append(kys, k)
+	}
+	return kys
 }
 
 func (m *PushServiceManager) BuildPushServiceProviderFromMap(kv map[string]string) (psp *PushServiceProvider, err error) {

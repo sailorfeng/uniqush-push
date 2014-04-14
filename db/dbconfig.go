@@ -30,6 +30,7 @@ type DatabaseConfig struct {
 	Host      string
 	Port      int
 	CacheSize int
+	AfkUserTime int	// users that away from keyboard > AfkUserTime will be ignore while push msg
 
 	/* dump the dirty data to db every EverySec seconds,
 	 * if there are more than LeastDirty dirty items

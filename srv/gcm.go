@@ -19,6 +19,7 @@ package srv
 
 import (
 	"bytes"
+	"code.google.com/p/goconf/conf"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -48,6 +49,7 @@ func InstallGCM() {
 }
 
 func (p *gcmPushService) Finalize() {}
+func (p *gcmPushService) Config(cf *conf.ConfigFile) {}
 
 func (p *gcmPushService) BuildPushServiceProviderFromMap(kv map[string]string,
 	psp *PushServiceProvider) error {

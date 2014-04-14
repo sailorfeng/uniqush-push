@@ -19,6 +19,7 @@ package srv
 
 import (
 	"bytes"
+	"code.google.com/p/goconf/conf"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -64,6 +65,7 @@ func InstallADM() {
 }
 
 func (self *admPushService) Finalize() {}
+func (self *admPushService) Config(cf *conf.ConfigFile) {}
 func (self *admPushService) Name() string {
 	return "adm"
 }
