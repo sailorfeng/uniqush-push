@@ -18,8 +18,12 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"time"
+
 	"fmt"
-	"github.com/nu7hatch/gouuid"
+
 	"github.com/uniqush/log"
 	. "github.com/sailorfeng/uniqush-push/push"
 	"io"
@@ -39,6 +43,12 @@ type RestAPI struct {
 	version   string
 	waitGroup *sync.WaitGroup
 	stopChan  chan<- bool
+}
+
+func randomUniqId() string {
+	var d [16]byte
+	io.ReadFull(rand.Reader, d[:])
+	return fmt.Sprintf("%x-%v", time.Now().Unix(), base64.URLEncoding.EncodeToString(d[:]))
 }
 
 // loggers: sequence is web, add
@@ -69,7 +79,7 @@ var validSubscriberPattern *regexp.Regexp
 
 func init() {
 	var err error
-	validServicePattern, err = regexp.Compile("^[a-zA-z\\.0-9-_]+$")
+	validServicePattern, err = regexp.Compile("^[a-zA-z\\.0-9-_@]+$")
 	if err != nil {
 		validServicePattern = nil
 	}
@@ -83,7 +93,7 @@ func validateSubscribers(subs []string) error {
 	if validSubscriberPattern != nil {
 		for _, sub := range subs {
 			if !validSubscriberPattern.MatchString(sub) {
-				return fmt.Errorf("invalid subscriber name: %s. Accept charaters: a-z, A-Z, 0-9, -, _ or .", sub)
+				return fmt.Errorf("invalid subscriber name: %s. Accept charaters: a-z, A-Z, 0-9, -, _, @ or .", sub)
 			}
 		}
 	}
@@ -93,7 +103,7 @@ func validateSubscribers(subs []string) error {
 func validateService(service string) error {
 	if validServicePattern != nil {
 		if !validServicePattern.MatchString(service) {
-			return fmt.Errorf("invalid service name: %s. Accept charaters: a-z, A-Z, 0-9, -, _ or .", service)
+			return fmt.Errorf("invalid service name: %s. Accept charaters: a-z, A-Z, 0-9, -, _, @ or .", service)
 		}
 	}
 	return nil
@@ -423,13 +433,13 @@ func (self *RestAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case PUSH_NOTIFICATION_URL:
 		weblogger := log.NewLogger(writer, "[Push]", logLevel)
 		logger := log.MultiLogger(weblogger, self.loggers[LOGGER_PUSH])
-		rid, _ := uuid.NewV4()
-		self.pushNotification(rid.String(), kv, perdp, logger, remoteAddr)
+		rid := randomUniqId()
+		self.pushNotification(rid, kv, perdp, logger, remoteAddr)
 	case SET_ATTRIB:
 		weblogger := log.NewLogger(writer, "[SetAttrib]", logLevel)
 		logger := log.MultiLogger(weblogger, self.loggers[LOGGER_SET_ATTRIB])
-		rid, _ := uuid.NewV4()
-		self.setAttrib(rid.String(), kv, logger, remoteAddr)
+		rid := randomUniqId()
+		self.setAttrib(rid, kv, logger, remoteAddr)
 	}
 }
 

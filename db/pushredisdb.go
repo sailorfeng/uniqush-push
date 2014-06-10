@@ -324,8 +324,10 @@ func (r *PushRedisDB) GetDeliveryPointsNameByServiceSubscriber(srv, usr, filter 
 	}
 
 	justPushLast := false
+	//afkUserTime := -1
 	if filterMap != nil {
-		_, justPushLast = filterMap["LastestDevice"]
+		_, justPushLast = filterMap["_LastestDevice"]
+		delete(filterMap, "_LastestDevice")
 	}
 
 	for _, k := range keys {

@@ -1,5 +1,7 @@
 - [Homepage](http://uniqush.org)
 - [Download](http://uniqush.org/downloads.html)
+- [Blog/News](http://blog.uniqush.org)
+- [@uniqush](http://twitter.com/uniqush)
 
 # Introduction #
 
@@ -63,8 +65,8 @@ blog](http://blog.uniqush.org/). And if you are really impatient, [our github
 account](http://github.com/uniqush) will always contain the latest progress.
 
 # Related Links #
-- [This story](http://uniqush.org/wiki/UniqushStory) may help you to understand
+- [This story](http://uniqush.org/documentation/intro.html) may help you to understand
 the basic idea of *uniqush*.
-- [Documentation](http://uniqush.org/wiki/UniqushDocumentIndex)
+- [Documentation](http://uniqush.org/documentation/index.html)
 - [Uniqush Blog](http://blog.uniqush.org) announces the latest news about uniqush.
 
